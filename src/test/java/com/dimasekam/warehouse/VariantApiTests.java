@@ -232,6 +232,29 @@ class VariantApiTests {
 				.andExpect(status().isNotFound());
 	}
 
+	@Test
+	void deleteRefusesAVariantThatAppearsInASale() throws Exception {
+		long itemId = createItem("P-SALE");
+		long variantId = createVariant(itemId, "V-SALE");
+		restockVariant(variantId, 3);
+		recordVariantSale(variantId, 1);
+
+		mockMvc.perform(delete("/api/v1/variants/" + variantId))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("variant V-SALE appears in a sale and cannot be deleted"));
+	}
+
+	@Test
+	void deleteRefusesAVariantWithStockHistory() throws Exception {
+		long itemId = createItem("P-HIST");
+		long variantId = createVariant(itemId, "V-HIST");
+		restockVariant(variantId, 3);
+
+		mockMvc.perform(delete("/api/v1/variants/" + variantId))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("variant V-HIST has stock history and cannot be deleted"));
+	}
+
 	// Creates an item through the API and returns its id.
 	private long createItem(String sku) throws Exception {
 		String body = mockMvc.perform(post("/api/v1/items")
@@ -265,5 +288,20 @@ class VariantApiTests {
 				.andReturn().getResponse().getContentAsString();
 
 		return objectMapper.readTree(body).get("id").asLong();
+	}
+
+	private void restockVariant(long variantId, int delta) throws Exception {
+		mockMvc.perform(post("/api/v1/variants/" + variantId + "/stock")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"delta\": " + delta + ", \"reason\": \"RESTOCK\"}"))
+				.andExpect(status().isOk());
+	}
+
+	private void recordVariantSale(long variantId, int quantity) throws Exception {
+		mockMvc.perform(post("/api/v1/sales")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"lines\": [{\"type\": \"VARIANT\", \"id\": " + variantId
+								+ ", \"quantity\": " + quantity + "}]}"))
+				.andExpect(status().isCreated());
 	}
 }
