@@ -6,6 +6,7 @@ import com.dimasekam.warehouse.domain.Variant;
 import com.dimasekam.warehouse.domain.VariantAttribute;
 import com.dimasekam.warehouse.dto.AttributeResponse;
 import com.dimasekam.warehouse.dto.ItemResponse;
+import com.dimasekam.warehouse.dto.SellableResponse;
 import com.dimasekam.warehouse.dto.VariantResponse;
 import com.dimasekam.warehouse.repository.StockLevelRepository;
 import com.dimasekam.warehouse.repository.VariantRepository;
@@ -83,6 +84,20 @@ public class CatalogMapper {
 			attributes.add(attributeResponse);
 		}
 		response.setAttributes(attributes);
+		return response;
+	}
+
+	public SellableResponse toSellableResponse(StockLevel level) {
+		SellableResponse response = new SellableResponse();
+		if (level.getItem() != null) {
+			response.setType("ITEM");
+			response.setId(level.getItem().getId());
+			response.setSku(level.getItem().getSku());
+		} else {
+			response.setType("VARIANT");
+			response.setId(level.getVariant().getId());
+			response.setSku(level.getVariant().getSku());
+		}
 		return response;
 	}
 
