@@ -19,7 +19,7 @@ import java.time.Instant;
  * One row per change to a stock count, so the count can be explained later.
  * A movement is a fact: once written it is never edited, which is why there are
  * no setters. The sum of the deltas for a stock level equals its current
- * quantity (FR-08).
+ * quantity.
  */
 @Entity
 @Table(name = "stock_movement")

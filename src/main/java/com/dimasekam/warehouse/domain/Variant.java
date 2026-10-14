@@ -35,7 +35,7 @@ public class Variant {
 	@Column(nullable = false, unique = true)
 	private String sku;
 
-	// Null means "use the item price". A value here overrides it (FR-03).
+	// Null means "use the item price". A value here overrides it.
 	@Column(precision = 12, scale = 2)
 	private BigDecimal price;
 

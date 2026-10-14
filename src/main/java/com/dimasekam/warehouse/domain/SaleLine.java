@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 /**
  * One line of a sale: which sellable, how many, and the unit price captured at the
  * moment of the sale. That price is snapshotted so editing the catalog later does
- * not rewrite sale history (BR-07).
+ * not rewrite sale history.
  */
 @Entity
 @Table(name = "sale_line")

@@ -15,10 +15,10 @@ import org.hibernate.annotations.Check;
  * The stock count for one sellable unit. A row points at either an item (a simple
  * product) or a variant (a stocked difference), never both. Items that carry
  * variants do not get a stock row: their variants hold the counts, and the item
- * quantity is only ever derived by summing them (FR-04).
+ * quantity is only ever derived by summing them.
  *
  * The count never goes below zero. The service enforces that before writing, and
- * the database check constraint refuses it a second time (BR-01).
+ * the database check constraint refuses it a second time.
  */
 @Entity
 @Table(name = "stock_level")

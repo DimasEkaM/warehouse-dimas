@@ -58,7 +58,7 @@ public class ItemService {
 	public ItemResponse update(Long id, ItemUpdateRequest request) {
 		Item item = findItem(id);
 
-		// Only the fields the caller supplied are changed (FR-01).
+		// Only the fields the caller supplied are changed.
 		if (request.getSku() != null && !request.getSku().equals(item.getSku())) {
 			requireSkuFree(request.getSku());
 			item.setSku(request.getSku());

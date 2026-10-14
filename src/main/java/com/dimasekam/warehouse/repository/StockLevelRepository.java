@@ -16,7 +16,7 @@ public interface StockLevelRepository extends JpaRepository<StockLevel, Long> {
 	Optional<StockLevel> findByVariantId(Long variantId);
 
 	// SELECT ... FOR UPDATE. The row stays locked until the transaction ends, so two
-	// sales racing for the last unit cannot both read the same quantity (FR-07).
+	// sales racing for the last unit cannot both read the same quantity.
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select s from StockLevel s where s.id = :id")
 	Optional<StockLevel> findByIdForUpdate(@Param("id") Long id);
