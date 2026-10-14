@@ -108,17 +108,17 @@ public class StockService {
 
 	// The stock row is created the first time it is needed, so a fresh item reads as zero.
 	private StockLevel itemStockLevel(Item item) {
-		Optional<StockLevel> found = stockLevelRepository.findByItemId(item.getId());
+		Optional<StockLevel> found = stockLevelRepository.findByItemIdForUpdate(item.getId());
 		if (found.isPresent()) {
-			return stockLevelRepository.findByIdForUpdate(found.get().getId()).orElseThrow();
+			return found.get();
 		}
 		return stockLevelRepository.save(StockLevel.forItem(item));
 	}
 
 	private StockLevel variantStockLevel(Variant variant) {
-		Optional<StockLevel> found = stockLevelRepository.findByVariantId(variant.getId());
+		Optional<StockLevel> found = stockLevelRepository.findByVariantIdForUpdate(variant.getId());
 		if (found.isPresent()) {
-			return stockLevelRepository.findByIdForUpdate(found.get().getId()).orElseThrow();
+			return found.get();
 		}
 		return stockLevelRepository.save(StockLevel.forVariant(variant));
 	}

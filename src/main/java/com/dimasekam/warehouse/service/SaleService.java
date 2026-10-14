@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -136,18 +137,16 @@ public class SaleService {
 	}
 
 	private StockLevel lockStockLevel(SaleLineData d) {
+		// One locked query. Reading the row first without a lock would let the follow-up
+		// FOR UPDATE hit the cached copy and see a stale quantity.
+		Optional<StockLevel> found;
 		if ("ITEM".equals(d.type)) {
-			// find stock level by item
-			return stockLevelRepository.findByItemId(d.sellableId)
-					.map(sl -> stockLevelRepository.findByIdForUpdate(sl.getId())
-							.orElseThrow(() -> new NotFoundException("stock level not found: " + sl.getId())))
-					.orElseThrow(() -> new NotFoundException("stock level not found for item: " + d.sellableId));
-		} else { // VARIANT
-			return stockLevelRepository.findByVariantId(d.sellableId)
-					.map(sl -> stockLevelRepository.findByIdForUpdate(sl.getId())
-							.orElseThrow(() -> new NotFoundException("stock level not found: " + sl.getId())))
-					.orElseThrow(() -> new NotFoundException("stock level not found for variant: " + d.sellableId));
+			found = stockLevelRepository.findByItemIdForUpdate(d.sellableId);
+		} else {
+			found = stockLevelRepository.findByVariantIdForUpdate(d.sellableId);
 		}
+		return found.orElseThrow(() -> new NotFoundException(
+				"stock level not found for " + d.type.toLowerCase() + ": " + d.sellableId));
 	}
 
 	private void checkAvailable(SaleLineData d, StockLevel sl) {
