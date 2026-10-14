@@ -71,6 +71,50 @@ class SaleApiTests {
 				.andExpect(status().isConflict());
 	}
 
+	@Test
+	void failedLineWritesNoLinesAtAll() throws Exception {
+		// Three lines: the third asks for more than is available. Nothing from this
+		// sale may land - no quantities moved, no SALE movements, no sale rows.
+		long firstId = createItem("MUG-WHT");
+		long secondId = createItem("PLATE-BLU");
+		long thirdId = createItem("BOWL-RED");
+		restockItem(firstId, 5);
+		restockItem(secondId, 5);
+		restockItem(thirdId, 2);
+
+		mockMvc.perform(post("/api/v1/sales")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"lines\":["
+								+ "{\"type\":\"ITEM\",\"id\":" + firstId + ",\"quantity\":1},"
+								+ "{\"type\":\"ITEM\",\"id\":" + secondId + ",\"quantity\":1},"
+								+ "{\"type\":\"ITEM\",\"id\":" + thirdId + ",\"quantity\":5}"
+								+ "]}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.status").value(409));
+
+		// every quantity is untouched
+		assertStock(firstId, 5);
+		assertStock(secondId, 5);
+		assertStock(thirdId, 2);
+
+		// the first two lines wrote no SALE movement either
+		assertOnlyRestockMovement(firstId);
+		assertOnlyRestockMovement(secondId);
+	}
+
+	private void assertStock(long itemId, int expected) throws Exception {
+		mockMvc.perform(get("/api/v1/items/" + itemId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.stock").value(expected));
+	}
+
+	private void assertOnlyRestockMovement(long itemId) throws Exception {
+		mockMvc.perform(get("/api/v1/stock-movements?itemId=" + itemId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].reason").value("RESTOCK"));
+	}
+
 	private long createItem(String sku) throws Exception {
 		String body = mockMvc.perform(post("/api/v1/items")
 						.contentType(MediaType.APPLICATION_JSON)
