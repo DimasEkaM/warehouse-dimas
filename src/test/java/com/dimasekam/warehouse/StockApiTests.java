@@ -73,6 +73,18 @@ class StockApiTests {
 	}
 
 	@Test
+	void fractionalDeltaReturns400() throws Exception {
+		long itemId = createItem("MUG-WHT");
+
+		mockMvc.perform(post("/api/v1/items/" + itemId + "/stock")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"delta": 1.5, "reason": "RESTOCK"}
+								"""))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void adjustmentRefusesSaleReasonOnManualEndpoint() throws Exception {
 		long itemId = createItem("MUG-WHT");
 
