@@ -9,6 +9,11 @@ import org.springframework.stereotype.Component;
  *
  *   ./mvnw spring-boot:run -Dspring-boot.run.profiles=seed
  *
+ * On Windows PowerShell the same argument needs quotes around it, otherwise it is
+ * split at the dots and Maven reports an unknown lifecycle phase:
+ *
+ *   .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=seed"
+ *
  * Without the profile this bean is not created and the application starts empty.
  */
 @Component
