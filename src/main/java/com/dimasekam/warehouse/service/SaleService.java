@@ -81,7 +81,7 @@ public class SaleService {
 				checkAvailable(data.get(i), locked.get(i));
 			}
 
-			// Apply: create sale, create lines, update quantities, create movements
+			// Apply: create the sale with its lines, and move the quantities.
 			Sale sale = new Sale();
 			BigDecimal total = BigDecimal.ZERO;
 			for (int i = 0; i < data.size(); i++) {
@@ -94,15 +94,21 @@ public class SaleService {
 				SaleLine line = d.createSaleLine();
 				sale.addLine(line);
 
-				int newQty = sl.getQuantity() - d.quantity;
-				sl.setQuantity(newQty);
+				sl.setQuantity(sl.getQuantity() - d.quantity);
 				stockLevelRepository.save(sl);
-
-				stockMovementRepository.save(StockMovement.of(sl, -d.quantity, newQty, StockMovementReason.SALE, sale.getId()));
 			}
 			sale.setTotal(total);
 
 			Sale saved = saleRepository.save(sale);
+
+			// The sale id only exists once it is saved, so the movements are written
+			// after: each one points back at the sale that caused it.
+			for (int i = 0; i < data.size(); i++) {
+				SaleLineData d = data.get(i);
+				StockLevel sl = locked.get(i);
+				stockMovementRepository.save(
+						StockMovement.of(sl, -d.quantity, sl.getQuantity(), StockMovementReason.SALE, saved.getId()));
+			}
 
 			return toSaleResponse(saved);
 		} finally {

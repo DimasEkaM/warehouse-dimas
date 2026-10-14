@@ -43,6 +43,12 @@ class SaleApiTests {
 		mockMvc.perform(get("/api/v1/sales/" + saleId))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.lines[0].quantity").value(2));
+
+		// the SALE movement points back at the sale that caused it
+		mockMvc.perform(get("/api/v1/stock-movements?itemId=" + itemId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[1].reason").value("SALE"))
+				.andExpect(jsonPath("$[1].referenceId").value(saleId));
 	}
 
 	@Test
