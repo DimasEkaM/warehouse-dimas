@@ -90,8 +90,8 @@ public class SaleService {
 				BigDecimal lineTotal = d.unitPrice.multiply(BigDecimal.valueOf(d.quantity));
 				total = total.add(lineTotal);
 
-				SaleLine saleLine = d.createSaleLine(lineTotal);
-				sale.addLine(saleLine);
+				SaleLine line = d.createSaleLine();
+				sale.addLine(line);
 
 				int newQty = sl.getQuantity() - d.quantity;
 				sl.setQuantity(newQty);
@@ -182,6 +182,15 @@ public class SaleService {
 		return res;
 	}
 
+
+	@Transactional(readOnly = true)
+	public SaleResponse getSale(Long id) {
+		Sale sale = saleRepository.findById(id)
+				.orElseThrow(() -> new NotFoundException("sale not found: " + id));
+		return toSaleResponse(sale);
+	}
+
+
 	static class SaleLineData {
 		String type;
 		Item item;
@@ -202,14 +211,12 @@ public class SaleService {
 			this.unitPrice = unitPrice;
 		}
 
-		SaleLine createSaleLine(BigDecimal lineTotal) {
+		SaleLine createSaleLine() {
 			if ("ITEM".equals(type)) {
 				SaleLine line = SaleLine.forItem(item, quantity, unitPrice);
-				line.setLineTotal(lineTotal);
 				return line;
 			} else {
 				SaleLine line = SaleLine.forVariant(variant, quantity, unitPrice);
-				line.setLineTotal(lineTotal);
 				return line;
 			}
 		}
