@@ -58,6 +58,28 @@ class ItemApiTests {
 	}
 
 	@Test
+	void createRejectsABlankName() throws Exception {
+		mockMvc.perform(post("/api/v1/items")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sku": "NO-NAME", "price": 5.00}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors[0].field").value("name"));
+	}
+
+	@Test
+	void createRejectsAMissingPrice() throws Exception {
+		mockMvc.perform(post("/api/v1/items")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sku": "NO-PRICE", "name": "No price"}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors[0].field").value("price"));
+	}
+
+	@Test
 	void createRejectsANegativePrice() throws Exception {
 		mockMvc.perform(post("/api/v1/items")
 						.contentType(MediaType.APPLICATION_JSON)
@@ -118,7 +140,10 @@ class ItemApiTests {
 		mockMvc.perform(get("/api/v1/items"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$").isArray())
-				.andExpect(jsonPath("$[0].sku").value("LIST-1"));
+				.andExpect(jsonPath("$[0].sku").value("LIST-1"))
+				.andExpect(jsonPath("$[0].price").value(9.99))
+				.andExpect(jsonPath("$[0].stock").value(0))
+				.andExpect(jsonPath("$[0].variantCount").value(0));
 	}
 
 	@Test

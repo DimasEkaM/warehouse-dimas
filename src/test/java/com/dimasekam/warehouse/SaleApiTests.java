@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -60,7 +61,75 @@ class SaleApiTests {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"lines\":[{\"type\":\"ITEM\",\"id\":" + itemId + ",\"quantity\":5}] }"))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.status").value(409));
+				.andExpect(jsonPath("$.status").value(409))
+				.andExpect(jsonPath("$.message")
+						.value("not enough stock for item MUG-WHT: 3 available, 5 requested"));
+
+		// the refusal changed nothing
+		assertStock(itemId, 3);
+	}
+
+	@Test
+	void lastUnitSellsToZero() throws Exception {
+		long itemId = createItem("LAST-1");
+		restockItem(itemId, 1);
+
+		mockMvc.perform(post("/api/v1/sales")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"lines\":[{\"type\":\"ITEM\",\"id\":" + itemId + ",\"quantity\":1}]}"))
+				.andExpect(status().isCreated());
+
+		assertStock(itemId, 0);
+	}
+
+	@Test
+	void saleKeepsTheUnitPriceItTook() throws Exception {
+		long itemId = createItem("SNAP-1");
+		restockItem(itemId, 5);
+
+		String body = mockMvc.perform(post("/api/v1/sales")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"lines\":[{\"type\":\"ITEM\",\"id\":" + itemId + ",\"quantity\":2}]}"))
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getContentAsString();
+		long saleId = objectMapper.readTree(body).get("id").asLong();
+
+		// the catalog price changes after the sale...
+		mockMvc.perform(put("/api/v1/items/" + itemId)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sku\":\"SNAP-1\",\"name\":\"Item SNAP-1\",\"price\":29.99}"))
+				.andExpect(status().isOk());
+
+		// ...and the sale still reports the price it charged at the time
+		mockMvc.perform(get("/api/v1/sales/" + saleId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lines[0].unitPrice").value(9.99))
+				.andExpect(jsonPath("$.lines[0].lineTotal").value(19.98))
+				.andExpect(jsonPath("$.total").value(19.98));
+	}
+
+	@Test
+	void saleQuantityMustBeGreaterThanZero() throws Exception {
+		long itemId = createItem("QTY-1");
+		restockItem(itemId, 5);
+
+		mockMvc.perform(post("/api/v1/sales")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"lines\":[{\"type\":\"ITEM\",\"id\":" + itemId + ",\"quantity\":0}]}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors[0].message").value("quantity must be greater than zero"));
+
+		mockMvc.perform(post("/api/v1/sales")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"lines\":[{\"type\":\"ITEM\",\"id\":" + itemId + ",\"quantity\":-2}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void getSaleReturns404ForAnUnknownId() throws Exception {
+		mockMvc.perform(get("/api/v1/sales/999999"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.message").value("sale not found: 999999"));
 	}
 
 	@Test

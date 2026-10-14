@@ -233,6 +233,21 @@ class VariantApiTests {
 	}
 
 	@Test
+	void itemStockIsTheSumOfItsVariantsAndMarkedDerived() throws Exception {
+		long itemId = createItem("P-DER");
+		long smallId = createVariant(itemId, "P-DER-S");
+		long largeId = createVariant(itemId, "P-DER-L");
+		restockVariant(smallId, 4);
+		restockVariant(largeId, 6);
+
+		// the item holds no stock of its own; it reports the sum of its variants
+		mockMvc.perform(get("/api/v1/items/" + itemId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.stock").value(10))
+				.andExpect(jsonPath("$.stockDerived").value(true));
+	}
+
+	@Test
 	void deleteRefusesAVariantThatAppearsInASale() throws Exception {
 		long itemId = createItem("P-SALE");
 		long variantId = createVariant(itemId, "V-SALE");
