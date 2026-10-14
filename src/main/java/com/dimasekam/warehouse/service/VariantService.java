@@ -9,6 +9,8 @@ import com.dimasekam.warehouse.dto.VariantUpdateRequest;
 import com.dimasekam.warehouse.exception.ConflictException;
 import com.dimasekam.warehouse.exception.NotFoundException;
 import com.dimasekam.warehouse.repository.ItemRepository;
+import com.dimasekam.warehouse.repository.SaleLineRepository;
+import com.dimasekam.warehouse.repository.StockLevelRepository;
 import com.dimasekam.warehouse.repository.VariantRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,11 +23,17 @@ public class VariantService {
 
 	private final ItemRepository itemRepository;
 	private final VariantRepository variantRepository;
+	private final SaleLineRepository saleLineRepository;
+	private final StockLevelRepository stockLevelRepository;
 	private final CatalogMapper catalogMapper;
 
-	public VariantService(ItemRepository itemRepository, VariantRepository variantRepository, CatalogMapper catalogMapper) {
+	public VariantService(ItemRepository itemRepository, VariantRepository variantRepository,
+			SaleLineRepository saleLineRepository, StockLevelRepository stockLevelRepository,
+			CatalogMapper catalogMapper) {
 		this.itemRepository = itemRepository;
 		this.variantRepository = variantRepository;
+		this.saleLineRepository = saleLineRepository;
+		this.stockLevelRepository = stockLevelRepository;
 		this.catalogMapper = catalogMapper;
 	}
 
@@ -78,7 +86,17 @@ public class VariantService {
 
 	@Transactional
 	public void delete(Long id) {
-		variantRepository.delete(findVariant(id));
+		Variant variant = findVariant(id);
+
+		// Same rule as an item: refuse with a 409 while dependents exist, instead of
+		// letting the foreign key turn the request into a 500.
+		if (saleLineRepository.existsByVariantId(id)) {
+			throw new ConflictException("variant " + variant.getSku() + " appears in a sale and cannot be deleted");
+		}
+		if (stockLevelRepository.findByVariantId(id).isPresent()) {
+			throw new ConflictException("variant " + variant.getSku() + " has stock history and cannot be deleted");
+		}
+		variantRepository.delete(variant);
 	}
 
 	private void addAttributes(Variant variant, List<AttributeRequest> attributes) {

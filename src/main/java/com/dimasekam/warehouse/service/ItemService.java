@@ -7,6 +7,8 @@ import com.dimasekam.warehouse.dto.ItemUpdateRequest;
 import com.dimasekam.warehouse.exception.ConflictException;
 import com.dimasekam.warehouse.exception.NotFoundException;
 import com.dimasekam.warehouse.repository.ItemRepository;
+import com.dimasekam.warehouse.repository.SaleLineRepository;
+import com.dimasekam.warehouse.repository.StockLevelRepository;
 import com.dimasekam.warehouse.repository.VariantRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +21,17 @@ public class ItemService {
 
 	private final ItemRepository itemRepository;
 	private final VariantRepository variantRepository;
+	private final SaleLineRepository saleLineRepository;
+	private final StockLevelRepository stockLevelRepository;
 	private final CatalogMapper catalogMapper;
 
-	public ItemService(ItemRepository itemRepository, VariantRepository variantRepository, CatalogMapper catalogMapper) {
+	public ItemService(ItemRepository itemRepository, VariantRepository variantRepository,
+			SaleLineRepository saleLineRepository, StockLevelRepository stockLevelRepository,
+			CatalogMapper catalogMapper) {
 		this.itemRepository = itemRepository;
 		this.variantRepository = variantRepository;
+		this.saleLineRepository = saleLineRepository;
+		this.stockLevelRepository = stockLevelRepository;
 		this.catalogMapper = catalogMapper;
 	}
 
@@ -80,8 +88,17 @@ public class ItemService {
 	public void delete(Long id) {
 		Item item = findItem(id);
 
+		// Dependents are refused with a 409 here, rather than left to fail on the
+		// foreign key as a 500. Stock history counts as a dependent too: its movement
+		// rows point at the stock row, and deleting them would quietly erase history.
 		if (variantRepository.countByItemId(id) > 0) {
 			throw new ConflictException("item " + item.getSku() + " has variants and cannot be deleted");
+		}
+		if (saleLineRepository.existsByItemId(id)) {
+			throw new ConflictException("item " + item.getSku() + " appears in a sale and cannot be deleted");
+		}
+		if (stockLevelRepository.findByItemId(id).isPresent()) {
+			throw new ConflictException("item " + item.getSku() + " has stock history and cannot be deleted");
 		}
 		itemRepository.delete(item);
 	}
